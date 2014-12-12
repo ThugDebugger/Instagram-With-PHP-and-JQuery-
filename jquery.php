@@ -42,6 +42,16 @@ function connectToInstagram($url)
 
 };//Ends the connectToInstagram function
 
+function getMaxID($access_token,$userID) 
+{
+	$url = 'https://api.instagram.com/v1/users/'.$userID.'/media/recent/?access_token='.$access_token;
+	$InstagramInfo = connectToInstagram($url);
+	$results = json_decode($InstagramInfo, true);
+	$maxIDArray = (string)$results['pagination']['next_max_id'];
+	return (string) $maxIDArray;
+	
+}
+
 function getComment($access_token,$mediaID)
 {
 	
@@ -128,7 +138,17 @@ if($_GET['code'])
 	echo $userFullName,"</br>";
 	//prints the user's Picture to the screen
 	echo('<img src=" '. $userPicture .' "/><br/>');
-	getComment($access_token,'873533687280459788');
+	//getComment($access_token,getMaxID($access_token,$userID));
+	echo "<input type='submit' class='button' name='insert' value='Load More' /> " ;
+     if($_GET['insert'])
+      {
+        //getComment($access_token,getMaxID($access_token,$userID));
+         echo '<script type="text/javascript">alert("Hello World"); </script>';
+         echo "Hello";
+        
+      }
+   
+
 	
  }
 
