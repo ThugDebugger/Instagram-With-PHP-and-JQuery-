@@ -7,9 +7,9 @@ session_start();
 /*----------Instagram API Keys (Constants)-------*/
 
 //ID of your client (app)
-define("clientID","xxxx"); 
+define("clientID","7b31b72433ac41ac91c6fe9915c03ac5"); 
 //Secret password of your client
-define("clientSecret","xxxx");
+define("clientSecret","28fb8d3719434e6098567cb3c7495988");
 //URL to direct the user too once logged in successfully 
 define("redirectURI","http://localhost:8081/GitHub/JQuery/jquery.php");
 //Folder used to hold the pictures
@@ -42,7 +42,30 @@ function connectToInstagram($url)
 
 };//Ends the connectToInstagram function
 
+function getComment($access_token,$mediaID)
+{
+	
+	//Variable used to display the current amount of comments on a photo
+	$i = 1;
+	//Instagram endpoint used to get the comments and like status of a photo
+	$url = 'https://api.instagram.com/v1/media/'.$mediaID.'?access_token='.$access_token;
+	//Function is called to iniate the connection with the Instagram API, and returns the data to $InstagramInfo
+	$InstagramInfo = connectToInstagram($url);
+	//Decodes the JSON array stored in Instagram Info and stores it into the $results variable
+	$results =json_decode($InstagramInfo,true);
+	
 
+	//Used to grab the comments on a picture and returns it to $userText as an array
+	$userTextArray = $results['data']['comments'];
+	 	
+	//Iterates through the $userText array and assigns the values to $userComment within the loop
+	foreach($userTextArray['data'] as $newText)
+	{
+	  $userComment = $newText['text'];
+	  echo "Comment number ", $i, " says: ", $userComment,"</br>";
+	  $i = $i +1;
+	}
+}
 
 
 
@@ -105,11 +128,13 @@ if($_GET['code'])
 	echo $userFullName,"</br>";
 	//prints the user's Picture to the screen
 	echo('<img src=" '. $userPicture .' "/><br/>');
+	getComment($access_token,'873533687280459788');
 	
  }
- else
+
+else
  //If the user is not logged in, Display the code below
- { ?>
+{ ?>
 
 
 <doctype html>
