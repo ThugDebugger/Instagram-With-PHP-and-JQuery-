@@ -48,33 +48,65 @@ function getMaxID($access_token,$userID)
 	$InstagramInfo = connectToInstagram($url);
 	$results = json_decode($InstagramInfo, true);
 	$maxIDArray = (string)$results['pagination']['next_max_id'];
+	//echo $maxIDArray;
 	return (string) $maxIDArray;
 	
 }
 
-function getComment($access_token,$mediaID)
+function getComment($access_token,$mediaID,$userID)
 {
+	$flag = TRUE;
 	
 	//Variable used to display the current amount of comments on a photo
 	$i = 1;
 	//Instagram endpoint used to get the comments and like status of a photo
-	$url = 'https://api.instagram.com/v1/media/'.$mediaID.'?access_token='.$access_token;
+	$url = 'https://api.instagram.com/v1/users/'.$userID.'/media/recent/?access_token='.$access_token.'&max_id='.$mediaID;
 	//Function is called to iniate the connection with the Instagram API, and returns the data to $InstagramInfo
 	$InstagramInfo = connectToInstagram($url);
 	//Decodes the JSON array stored in Instagram Info and stores it into the $results variable
 	$results =json_decode($InstagramInfo,true);
-	
+	//print_r($results);
+	$mediaID = $results['pagination']['next_max_id'];
+	$code = $results['meta']['code'];
 
-	//Used to grab the comments on a picture and returns it to $userText as an array
-	$userTextArray = $results['data']['comments'];
-	 	
-	//Iterates through the $userText array and assigns the values to $userComment within the loop
-	foreach($userTextArray['data'] as $newText)
+	//echo $code;
+ 
+	while ($flag)
 	{
-	  $userComment = $newText['text'];
-	  echo "Comment number ", $i, " says: ", $userComment,"</br>";
-	  $i = $i +1;
+	
+	//Iterates through the $userText array and assigns the values to $userComment within the loop
+	foreach($results['data'] as $newText)
+	{
+	  $userComment = $newText['comments'];
+	  foreach($userComment['data'] as $newText2)
+	  {
+	  	$comment = $newText2['text'];
+	  	echo "Comment number ", $i, " says: ", $comment,"</br>";
+	    $i = $i +1;
+	  }
 	}
+
+	 $url = 'https://api.instagram.com/v1/users/'.$userID.'/media/recent/?access_token='.$access_token.'&max_id='.$mediaID;;
+	 //Function is called to iniate the connection with the Instagram API, and returns the data to $InstagramInfo
+	 $InstagramInfo = connectToInstagram($url);
+	 //Decodes the JSON array stored in Instagram Info and stores it into the $results variable
+	 $results =json_decode($InstagramInfo,true);
+	 $mediaID = $results['pagination']['next_max_id'];
+	 $code = $results['meta']['code'];
+	 if ( $code == '200')
+	 {
+	 	$flag = TRUE;
+	 }
+	 else
+	 {
+	 	$flag = false;
+	 	echo "done";
+	 }
+
+     } // end while
+   
+   
+   
 }
 
 
@@ -138,16 +170,8 @@ if($_GET['code'])
 	echo $userFullName,"</br>";
 	//prints the user's Picture to the screen
 	echo('<img src=" '. $userPicture .' "/><br/>');
-	//getComment($access_token,getMaxID($access_token,$userID));
-	echo "<input type='submit' class='button' name='insert' value='Load More' /> " ;
-     if($_GET['insert'])
-      {
-        //getComment($access_token,getMaxID($access_token,$userID));
-         echo '<script type="text/javascript">alert("Hello World"); </script>';
-         echo "Hello";
-        
-      }
-   
+	getComment($access_token,getMaxID($access_token,$userID),$userID);
+	//getMaxID($access_token,$userID);
 
 	
  }
@@ -163,7 +187,6 @@ else
 <body>
                     <!-- LOGIN LINK AND SCOPES -->
     <a href="https://api.instagram.com/oauth/authorize/?client_id=<?php echo clientID; ?>&redirect_uri=<?php echo redirectURI; ?>&response_type=code&scope=likes+comments+relationships"> Login </a>
-
 </body>
 
 
