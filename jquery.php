@@ -59,8 +59,10 @@ function getComment($access_token,$mediaID,$userID)
 {
 	$flag = TRUE;
 	
-	//Variable used to display the current amount of comments on a photo
+	//Variable used to display the current amount of comments on a photo (STARTING FROM 1)
 	$i = 1;
+	//Variable used to display the current amount of comments on a photo (STARTING FROM 0)
+	$k = 0;
 	//VARIABLE USED TO DISPLAY THE CURRENT PICTURE NUMBER ON
 	$j = 1;
 	//GETS THE CURRENT UNIX TIME FROM THE SERVER (DEFUNCT-ONLY USED FOR A HARD CODE TIME SET BELOW)
@@ -84,36 +86,50 @@ function getComment($access_token,$mediaID,$userID)
 		$pictureID = $newText['id'];
 		echo "The picture ID is: ", $pictureID, "</br>";
 	    echo "Showing comments from picture #", $j,"</br>";
-	    //CONCATENATES THE COMMENTS TOGETHER INTO A STRING DELIMINATED BY +=
+	    //VARIABLE INIT. FOR CONCATENATING THE COMMENTS TOGETHER INTO A STRING DELIMINATED BY +=
 	    $commentCat = "+/";
-	    //VALUE USED TO SHOW THE COMMENT NUMBER BEING DISPLAYED. 
+	    //VARIABLE INIT. FOR CONCATENATING THE USER NAMES TOGETHER INTO A STRING DELIMINATED BY +=
+	    $userCat = "+/";
+	    //RESET THE COUNT FOR THE AMOUNT OF COMMENTS ON A PICTURE (STARTING FROM 1)
 	    $i = 1;
+	    //RESET THE COUNT FOR THE AMOUNT OF COMMENTS ON A PICTURE (STARTING FROM 0)
+	    $k = 0;
 	    //ASSIGNS THE COMMENT RETRIVED FROM THE API
 	    $userComment = $newText['comments'];
 	    foreach($userComment['data'] as $newText2)
 	     {
 	  	    $comment = $newText2['text'];
-	  	    $commentCat	.= $comment . "+/";
+	  	    $commentCat	.= $comment . "+/";    
 	  	    $user = $newText2['from']['username'];
+	  	    $userCat .=  $user ."+/";
 	  	    echo "Comment number ", $i, " says: ", $comment, " and it is from: ",$user,"</br>";
 	  	    //UPDATES THE SQL DATABASE WITH THE CONCATENATED STRING OF COMMENTS
 	  	    mysql_query("UPDATE Dsp_data SET DSP_Comment = '$commentCat' WHERE DSP_PicID = $j ") or die (mysql_error());
+	  	    //UPDATES THE SQL DATABASE WITH THE CONCATENATED STRING OF USER NAMES
+	  	    mysql_query("UPDATE Dsp_data SET DSP_UserName = '$userCat' WHERE DSP_PicID = $j ") or die (mysql_error());
 	  	    //mysql_query("UPDATE Dsp_data SET DSP_Comment = CONCAT(DSP_comment,'$comment') WHERE DSP_PicID = $j ") or die (mysql_error());
-	        $i = $i +1;
-	     }
+	        $i++;
+	        $k++;
+	     }//ENDS INSIDE-FOR EACH
+	    
+	    //UPDATES THE SQL DATABASE WITH THE AMOUNT OF COMMENTS PER SPECIFIED PICTURE
+	    mysql_query("UPDATE Dsp_data SET DSP_CommentAmt = '$k' WHERE DSP_PicID = $j ") or die (mysql_error());
+	   
 	   //EXECUTES IF NO COMMENTS WERE LEFT ON THE PICTURE
-	   if ($i == 1)
+	   if ($k == 0)
 	   {
 	   	$nullValue = "No Comments";
 	   	//UPDATE SQL DATABASE WITH THE $NULLVALUE
 	   	mysql_query("UPDATE Dsp_data SET DSP_Comment =  '$nullValue' WHERE DSP_PicID = $j ") or die (mysql_error());
+	   	//UPDATES THE SQL DATABASE WITH THE AMOUNT OF COMMENTS PER SPECIFIED PICTURE
+	    mysql_query("UPDATE Dsp_data SET DSP_CommentAmt = $k WHERE DSP_PicID = $j ") or die (mysql_error());
 	  	echo "No comments were made on this photo</br>";
-	   }
+	   }//ENDS IF-STATEMENT
 
-	  $j += 1;
-    }//ENDS FOR EACH
+	  $j++;
+    }//ENDS OUTIDE-FOR EACH
    
-}
+}//ENDS FUNCTION
 
 
 
