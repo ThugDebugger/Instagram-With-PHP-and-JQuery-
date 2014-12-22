@@ -1,8 +1,10 @@
 <?php
 
+include 'connection.php';
 set_time_limit(0);
 ini_set('default_socket_timeout',100);
 session_start();
+
 
 /*----------Instagram API Keys (Constants)-------*/
 
@@ -59,53 +61,57 @@ function getComment($access_token,$mediaID,$userID)
 	
 	//Variable used to display the current amount of comments on a photo
 	$i = 1;
+	//VARIABLE USED TO DISPLAY THE CURRENT PICTURE NUMBER ON
+	$j = 1;
+	//GETS THE CURRENT UNIX TIME FROM THE SERVER (DEFUNCT-ONLY USED FOR A HARD CODE TIME SET BELOW)
+	$time = time ();
+	//HARD-CODED TIME, WHICH CAME FROM THE CALLING OF THE TIME FUNCTION ABOVE. PARTICULAR CHOSEN VALUE
+	$time = '1418854190';
 	//Instagram endpoint used to get the comments and like status of a photo
-	$url = 'https://api.instagram.com/v1/users/'.$userID.'/media/recent/?access_token='.$access_token.'&max_id='.$mediaID;
+	$url = 'https://api.instagram.com/v1/users/'.$userID.'/media/recent/?access_token='.$access_token.'&min_timestamp='.$time;
 	//Function is called to iniate the connection with the Instagram API, and returns the data to $InstagramInfo
 	$InstagramInfo = connectToInstagram($url);
 	//Decodes the JSON array stored in Instagram Info and stores it into the $results variable
 	$results =json_decode($InstagramInfo,true);
 	//print_r($results);
-	$mediaID = $results['pagination']['next_max_id'];
 	$code = $results['meta']['code'];
 
-	//echo $code;
- 
-	while ($flag)
-	{
 	
-	//Iterates through the $userText array and assigns the values to $userComment within the loop
+	//Iterates through the $userText array and assigns the values to $newText within the loop
 	foreach($results['data'] as $newText)
 	{
-	  $userComment = $newText['comments'];
-	  foreach($userComment['data'] as $newText2)
-	  {
-	  	$comment = $newText2['text'];
-	  	echo "Comment number ", $i, " says: ", $comment,"</br>";
-	    $i = $i +1;
-	  }
-	}
+		//ASSIGNS THE PICTURE ID FROM THE API
+		$pictureID = $newText['id'];
+		echo "The picture ID is: ", $pictureID, "</br>";
+	    echo "Showing comments from picture #", $j,"</br>";
+	    //CONCATENATES THE COMMENTS TOGETHER INTO A STRING DELIMINATED BY +=
+	    $commentCat = "+/";
+	    //VALUE USED TO SHOW THE COMMENT NUMBER BEING DISPLAYED. 
+	    $i = 1;
+	    //ASSIGNS THE COMMENT RETRIVED FROM THE API
+	    $userComment = $newText['comments'];
+	    foreach($userComment['data'] as $newText2)
+	     {
+	  	    $comment = $newText2['text'];
+	  	    $commentCat	.= $comment . "+/";
+	  	    $user = $newText2['from']['username'];
+	  	    echo "Comment number ", $i, " says: ", $comment, " and it is from: ",$user,"</br>";
+	  	    //UPDATES THE SQL DATABASE WITH THE CONCATENATED STRING OF COMMENTS
+	  	    mysql_query("UPDATE Dsp_data SET DSP_Comment = '$commentCat' WHERE DSP_PicID = $j ") or die (mysql_error());
+	  	    //mysql_query("UPDATE Dsp_data SET DSP_Comment = CONCAT(DSP_comment,'$comment') WHERE DSP_PicID = $j ") or die (mysql_error());
+	        $i = $i +1;
+	     }
+	   //EXECUTES IF NO COMMENTS WERE LEFT ON THE PICTURE
+	   if ($i == 1)
+	   {
+	   	$nullValue = "No Comments";
+	   	//UPDATE SQL DATABASE WITH THE $NULLVALUE
+	   	mysql_query("UPDATE Dsp_data SET DSP_Comment =  '$nullValue' WHERE DSP_PicID = $j ") or die (mysql_error());
+	  	echo "No comments were made on this photo</br>";
+	   }
 
-	 $url = 'https://api.instagram.com/v1/users/'.$userID.'/media/recent/?access_token='.$access_token.'&max_id='.$mediaID;;
-	 //Function is called to iniate the connection with the Instagram API, and returns the data to $InstagramInfo
-	 $InstagramInfo = connectToInstagram($url);
-	 //Decodes the JSON array stored in Instagram Info and stores it into the $results variable
-	 $results =json_decode($InstagramInfo,true);
-	 $mediaID = $results['pagination']['next_max_id'];
-	 $code = $results['meta']['code'];
-	 if ( $code == '200')
-	 {
-	 	$flag = TRUE;
-	 }
-	 else
-	 {
-	 	$flag = false;
-	 	echo "done";
-	 }
-
-     } // end while
-   
-   
+	  $j += 1;
+    }//ENDS FOR EACH
    
 }
 
