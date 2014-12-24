@@ -1,15 +1,17 @@
 <?php
 
+include 'connection.php';
 set_time_limit(0);
 ini_set('default_socket_timeout',100);
 session_start();
 
+
 /*----------Instagram API Keys (Constants)-------*/
 
 //ID of your client (app)
-define("clientID","xxxx"); 
+define("clientID","7b31b72433ac41ac91c6fe9915c03ac5"); 
 //Secret password of your client
-define("clientSecret","xxxx");
+define("clientSecret","28fb8d3719434e6098567cb3c7495988");
 //URL to direct the user too once logged in successfully 
 define("redirectURI","http://localhost:8081/GitHub/JQuery/jquery.php");
 //Folder used to hold the pictures
@@ -42,7 +44,92 @@ function connectToInstagram($url)
 
 };//Ends the connectToInstagram function
 
+function getMaxID($access_token,$userID) 
+{
+	$url = 'https://api.instagram.com/v1/users/'.$userID.'/media/recent/?access_token='.$access_token;
+	$InstagramInfo = connectToInstagram($url);
+	$results = json_decode($InstagramInfo, true);
+	$maxIDArray = (string)$results['pagination']['next_max_id'];
+	//echo $maxIDArray;
+	return (string) $maxIDArray;
+	
+}
 
+function getComment($access_token,$mediaID,$userID)
+{
+	$flag = TRUE;
+	
+	//Variable used to display the current amount of comments on a photo (STARTING FROM 1)
+	$i = 1;
+	//Variable used to display the current amount of comments on a photo (STARTING FROM 0)
+	$k = 0;
+	//VARIABLE USED TO DISPLAY THE CURRENT PICTURE NUMBER ON
+	$j = 1;
+	//GETS THE CURRENT UNIX TIME FROM THE SERVER (DEFUNCT-ONLY USED FOR A HARD CODE TIME SET BELOW)
+	$time = time ();
+	//HARD-CODED TIME, WHICH CAME FROM THE CALLING OF THE TIME FUNCTION ABOVE. PARTICULAR CHOSEN VALUE
+	$time = '1418854190';
+	//Instagram endpoint used to get the comments and like status of a photo
+	$url = 'https://api.instagram.com/v1/users/'.$userID.'/media/recent/?access_token='.$access_token.'&min_timestamp='.$time;
+	//Function is called to iniate the connection with the Instagram API, and returns the data to $InstagramInfo
+	$InstagramInfo = connectToInstagram($url);
+	//Decodes the JSON array stored in Instagram Info and stores it into the $results variable
+	$results =json_decode($InstagramInfo,true);
+	//print_r($results);
+	$code = $results['meta']['code'];
+
+	
+	//Iterates through the $userText array and assigns the values to $newText within the loop
+	foreach($results['data'] as $newText)
+	{
+		//ASSIGNS THE PICTURE ID FROM THE API
+		$pictureID = $newText['id'];
+		echo "The picture ID is: ", $pictureID, "</br>";
+	    echo "Showing comments from picture #", $j,"</br>";
+	    //VARIABLE INIT. FOR CONCATENATING THE COMMENTS TOGETHER INTO A STRING DELIMINATED BY +=
+	    $commentCat = "+/";
+	    //VARIABLE INIT. FOR CONCATENATING THE USER NAMES TOGETHER INTO A STRING DELIMINATED BY +=
+	    $userCat = "+/";
+	    //RESET THE COUNT FOR THE AMOUNT OF COMMENTS ON A PICTURE (STARTING FROM 1)
+	    $i = 1;
+	    //RESET THE COUNT FOR THE AMOUNT OF COMMENTS ON A PICTURE (STARTING FROM 0)
+	    $k = 0;
+	    //ASSIGNS THE COMMENT RETRIVED FROM THE API
+	    $userComment = $newText['comments'];
+	    foreach($userComment['data'] as $newText2)
+	     {
+	  	    $comment = $newText2['text'];
+	  	    $commentCat	.= $comment . "+/";    
+	  	    $user = $newText2['from']['username'];
+	  	    $userCat .=  $user ."+/";
+	  	    echo "Comment number ", $i, " says: ", $comment, " and it is from: ",$user,"</br>";
+	  	    //UPDATES THE SQL DATABASE WITH THE CONCATENATED STRING OF COMMENTS
+	  	    mysql_query("UPDATE Dsp_data SET DSP_Comment = '$commentCat' WHERE DSP_PicID = $j ") or die (mysql_error());
+	  	    //UPDATES THE SQL DATABASE WITH THE CONCATENATED STRING OF USER NAMES
+	  	    mysql_query("UPDATE Dsp_data SET DSP_UserName = '$userCat' WHERE DSP_PicID = $j ") or die (mysql_error());
+	  	    //mysql_query("UPDATE Dsp_data SET DSP_Comment = CONCAT(DSP_comment,'$comment') WHERE DSP_PicID = $j ") or die (mysql_error());
+	        $i++;
+	        $k++;
+	     }//ENDS INSIDE-FOR EACH
+	    
+	    //UPDATES THE SQL DATABASE WITH THE AMOUNT OF COMMENTS PER SPECIFIED PICTURE
+	    mysql_query("UPDATE Dsp_data SET DSP_CommentAmt = '$k' WHERE DSP_PicID = $j ") or die (mysql_error());
+	   
+	   //EXECUTES IF NO COMMENTS WERE LEFT ON THE PICTURE
+	   if ($k == 0)
+	   {
+	   	$nullValue = "No Comments";
+	   	//UPDATE SQL DATABASE WITH THE $NULLVALUE
+	   	mysql_query("UPDATE Dsp_data SET DSP_Comment =  '$nullValue' WHERE DSP_PicID = $j ") or die (mysql_error());
+	   	//UPDATES THE SQL DATABASE WITH THE AMOUNT OF COMMENTS PER SPECIFIED PICTURE
+	    mysql_query("UPDATE Dsp_data SET DSP_CommentAmt = $k WHERE DSP_PicID = $j ") or die (mysql_error());
+	  	echo "No comments were made on this photo</br>";
+	   }//ENDS IF-STATEMENT
+
+	  $j++;
+    }//ENDS OUTIDE-FOR EACH
+   
+}//ENDS FUNCTION
 
 
 
@@ -105,11 +192,15 @@ if($_GET['code'])
 	echo $userFullName,"</br>";
 	//prints the user's Picture to the screen
 	echo('<img src=" '. $userPicture .' "/><br/>');
+	getComment($access_token,getMaxID($access_token,$userID),$userID);
+	//getMaxID($access_token,$userID);
+
 	
  }
- else
+
+else
  //If the user is not logged in, Display the code below
- { ?>
+{ ?>
 
 
 <doctype html>
@@ -118,7 +209,6 @@ if($_GET['code'])
 <body>
                     <!-- LOGIN LINK AND SCOPES -->
     <a href="https://api.instagram.com/oauth/authorize/?client_id=<?php echo clientID; ?>&redirect_uri=<?php echo redirectURI; ?>&response_type=code&scope=likes+comments+relationships"> Login </a>
-
 </body>
 
 
